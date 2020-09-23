@@ -349,6 +349,29 @@ class TLS_Server final : public Command, public Botan::TLS::Callbacks
          return "echo/0.1";
          }
 
+      void tls_verify_cert_chain(
+         const std::vector<Botan::X509_Certificate>& cert_chain,
+         const std::vector<std::shared_ptr<const Botan::OCSP::Response>>& ocsp_responses,
+         const std::vector<Botan::Certificate_Store*>& trusted_roots,
+         Botan::Usage_Type usage,
+         const std::string& hostname,
+         const Botan::TLS::Policy& policy) override
+         {
+         try
+            {
+            // try to validate to exercise those code paths
+            Botan::TLS::Callbacks::tls_verify_cert_chain(cert_chain, ocsp_responses,
+                                                         trusted_roots, usage, hostname, policy);
+
+            output() << "Used original tls_veriry_cert_chain implementation";
+            }
+         catch(...)
+            {
+            output() << "Ignore validation result";
+            // ignore validation result
+            }
+         }
+
       socket_type m_socket = invalid_socket();
       bool m_is_tcp = false;
       uint32_t m_socket_id = 0;
