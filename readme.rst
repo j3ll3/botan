@@ -133,3 +133,13 @@ Other Useful Things
 * Threshold secret sharing
 * NIST key wrapping
 * Boost.Asio compatible TLS client stream
+
+
+Usefull commands
+sudo openssl ocsp -index v2g_root/index.txt -port 80 -rsigner ocsp_root/certs/ocsp_root.cert.pem -rkey ocsp_root/private/ocsp_root.key.pem -CA v2g_root/certs/v2g_root.cert.pem -text -ndays 7
+
+openssl pkcs8 -topk8 -inform PEM -outform DER -in cpo_sub_1/private/cpo_sub_1.key.pem -out cpo_sub_1/private/cpo_sub_1.key.pkcs8 -nocrypt
+sudo botan tls_server cpo_sub_1/certs/cpo_sub_1.cert.pem cpo_sub_1/private/cpo_sub_1.key.pkcs8
+
+# Send request for OCSP stapling
+openssl s_client --connect localhost:443 -CAfile v2g_root/certs/v2g_root.cert.pem -status
