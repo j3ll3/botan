@@ -218,6 +218,31 @@ class TLS_Server final : public Command, public Botan::TLS::Callbacks
 
          close_socket(server_fd);
          }
+
+      void tls_verify_cert_chain(
+         const std::vector<Botan::X509_Certificate>& cert_chain,
+         const std::vector<std::shared_ptr<const Botan::OCSP::Response>>& ocsp_responses,
+         const std::vector<Botan::Certificate_Store*>& trusted_roots,
+         Botan::Usage_Type usage,
+         const std::string& hostname,
+         const Botan::TLS::Policy& policy) override
+         {
+         try
+            {
+            // try to validate to exercise those code paths
+            output() << "Callback for tls_verify_cert_chain\n";
+            Botan::TLS::Callbacks::tls_verify_cert_chain(cert_chain, ocsp_responses,
+                                                         trusted_roots, usage, hostname, policy);
+
+            output() << "Used original tls_veriry_cert_chain implementation\n";
+            }
+         catch(...)
+            {
+            output() << "Ignore validation result\n";
+            // ignore validation result
+            }
+         }
+
    private:
       socket_type make_server_socket(uint16_t port)
          {
@@ -349,29 +374,6 @@ class TLS_Server final : public Command, public Botan::TLS::Callbacks
          return "echo/0.1";
          }
 
-      void tls_verify_cert_chain(
-         const std::vector<Botan::X509_Certificate>& cert_chain,
-         const std::vector<std::shared_ptr<const Botan::OCSP::Response>>& ocsp_responses,
-         const std::vector<Botan::Certificate_Store*>& trusted_roots,
-         Botan::Usage_Type usage,
-         const std::string& hostname,
-         const Botan::TLS::Policy& policy) override
-         {
-         try
-            {
-            // try to validate to exercise those code paths
-            Botan::TLS::Callbacks::tls_verify_cert_chain(cert_chain, ocsp_responses,
-                                                         trusted_roots, usage, hostname, policy);
-
-            output() << "Used original tls_veriry_cert_chain implementation";
-            }
-         catch(...)
-            {
-            output() << "Ignore validation result";
-            // ignore validation result
-            }
-         }
-
       socket_type m_socket = invalid_socket();
       bool m_is_tcp = false;
       uint32_t m_socket_id = 0;
@@ -379,6 +381,7 @@ class TLS_Server final : public Command, public Botan::TLS::Callbacks
       std::list<std::string> m_pending_output;
       Sandbox m_sandbox;
    };
+
 
 BOTAN_REGISTER_COMMAND("tls_server", TLS_Server);
 
