@@ -219,6 +219,19 @@ class TLS_Server final : public Command, public Botan::TLS::Callbacks
          close_socket(server_fd);
          }
 
+      std::vector<uint8_t> tls_provide_cert_status(const std::vector<Botan::X509_Certificate>&,
+                                                   const Botan::TLS::Certificate_Status_Request&) override
+          {
+          output() << "Callback for OCSP response\n";
+          return std::vector<uint8_t>();
+          }
+
+
+      std::chrono::milliseconds tls_verify_cert_chain_ocsp_timeout() const override
+         {
+         return std::chrono::milliseconds(3000);
+      }
+
       void tls_verify_cert_chain(
          const std::vector<Botan::X509_Certificate>& cert_chain,
          const std::vector<std::shared_ptr<const Botan::OCSP::Response>>& ocsp_responses,
