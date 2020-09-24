@@ -308,11 +308,10 @@ Certificate_Status_Code Response::status_for(const X509_Certificate& issuer,
 
 #if defined(BOTAN_HAS_HTTP_UTIL)
 
-Response online_check(const X509_Certificate& issuer,
-                      const BigInt& subject_serial,
-                      const std::string& ocsp_responder,
-                      Certificate_Store* trusted_roots,
-                      std::chrono::milliseconds timeout)
+std::vector<uint8_t> online_response(const X509_Certificate& issuer,
+                                     const BigInt& subject_serial,
+                                     const std::string& ocsp_responder,
+                                     std::chrono::milliseconds timeout)
    {
    if(ocsp_responder.empty())
       throw Invalid_Argument("No OCSP responder specified");
@@ -329,7 +328,29 @@ Response online_check(const X509_Certificate& issuer,
 
    // Check the MIME type?
 
-   OCSP::Response response(http.body());
+   return http.body();
+   }
+
+std::vector<uint8_t>  online_response(const X509_Certificate& issuer,
+                                      const X509_Certificate& subject,
+                                      std::chrono::milliseconds timeout)
+   {
+   if(subject.issuer_dn() != issuer.subject_dn())
+      throw Invalid_Argument("Invalid cert pair to OCSP::online_check (mismatched issuer,subject args?)");
+
+   return online_response(issuer,
+                       BigInt::decode(subject.serial_number()),
+                       subject.ocsp_responder(),
+                       timeout);
+   }
+
+Response online_check(const X509_Certificate& issuer,
+                      const BigInt& subject_serial,
+                      const std::string& ocsp_responder,
+                      Certificate_Store* trusted_roots,
+                      std::chrono::milliseconds timeout)
+   {
+   OCSP::Response response(online_response(issuer, subject_serial, ocsp_responder, timeout));
 
    std::vector<Certificate_Store*> trusted_roots_vec;
    trusted_roots_vec.push_back(trusted_roots);
