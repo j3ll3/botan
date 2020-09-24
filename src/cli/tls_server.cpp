@@ -233,9 +233,18 @@ class TLS_Server final : public Command, public Botan::TLS::Callbacks
 
          std::chrono::milliseconds timeout(3000);
 
-//         Botan::OCSP::Response resp = Botan::OCSP::online_check(ca_crt, chain[0], &cas, timeout);
-/*
-         auto status = resp.status_for(ca_crt, chain[0], std::chrono::system_clock::now());
+         ocspCachedResponse = Botan::OCSP::online_response(ca_crt, chain[0], timeout);
+         // when failed: return std::vector<uint8_t>();
+
+         Botan::OCSP::Response response(ocspCachedResponse);
+
+         std::vector<Botan::Certificate_Store*> trusted_roots_vec;
+         trusted_roots_vec.push_back(&cas);
+
+         if(&cas)
+             response.check_signature(trusted_roots_vec);
+
+         auto status = response.status_for(ca_crt, chain[0], std::chrono::system_clock::now());
 
          if(status == Botan::Certificate_Status_Code::OCSP_RESPONSE_GOOD)
             {
@@ -245,8 +254,8 @@ class TLS_Server final : public Command, public Botan::TLS::Callbacks
             {
             output() << "OCSP check failed " << Botan::Path_Validation_Result::status_string(status) << "\n";
             }
-*/
-          return Botan::OCSP::online_response(ca_crt, chain[0], timeout);
+
+          return ocspCachedResponse;
       }
 
 
@@ -418,6 +427,7 @@ class TLS_Server final : public Command, public Botan::TLS::Callbacks
       Sandbox m_sandbox;
       Botan::X509_Certificate ca_crt;
       Botan::Certificate_Store_In_Memory cas;
+      std::vector<uint8_t> ocspCachedResponse;
    };
 
 
