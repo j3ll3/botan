@@ -24,6 +24,10 @@
 #include <botan/internal/os_utils.h>
 #include <botan/mem_ops.h>
 
+#include <botan/ocsp.h>
+#include <botan/x509path.h>
+#include <botan/certstor.h>
+
 #include <list>
 #include <fstream>
 
@@ -36,9 +40,9 @@ class TLS_Server final : public Command, public Botan::TLS::Callbacks
    {
    public:
 #if SOCKET_ID
-      TLS_Server() : Command("tls_server cert key --port=443 --type=tcp --policy=default --dump-traces= --max-clients=0 --socket-id=0")
+      TLS_Server() : Command("tls_server cert key ca --port=443 --type=tcp --policy=default --dump-traces= --max-clients=0 --socket-id=0")
 #else
-      TLS_Server() : Command("tls_server cert key --port=443 --type=tcp --policy=default --dump-traces= --max-clients=0")
+      TLS_Server() : Command("tls_server cert key ca --port=443 --type=tcp --policy=default --dump-traces= --max-clients=0")
 #endif
          {
          init_sockets();
@@ -63,6 +67,7 @@ class TLS_Server final : public Command, public Botan::TLS::Callbacks
          {
          const std::string server_crt = get_arg("cert");
          const std::string server_key = get_arg("key");
+         ca_crt = Botan::X509_Certificate(get_arg("ca"));
          const uint16_t port = get_arg_u16("port");
          const size_t max_clients = get_arg_sz("max-clients");
          const std::string transport = get_arg("type");
@@ -83,6 +88,8 @@ class TLS_Server final : public Command, public Botan::TLS::Callbacks
          Botan::TLS::Session_Manager_In_Memory session_manager(rng()); // TODO sqlite3
 
          Basic_Credentials_Manager creds(rng(), server_crt, server_key);
+
+         cas.add_certificate(ca_crt);
 
          output() << "Listening for new connections on " << transport << " port " << port << std::endl;
 
@@ -219,12 +226,28 @@ class TLS_Server final : public Command, public Botan::TLS::Callbacks
          close_socket(server_fd);
          }
 
-      std::vector<uint8_t> tls_provide_cert_status(const std::vector<Botan::X509_Certificate>&,
+      std::vector<uint8_t> tls_provide_cert_status(const std::vector<Botan::X509_Certificate>& chain,
                                                    const Botan::TLS::Certificate_Status_Request&) override
-          {
-          output() << "Callback for OCSP response\n";
+         {
+         output() << "Callback for OCSP response\n";
+
+         std::chrono::milliseconds timeout(3000);
+
+         Botan::OCSP::Response resp = Botan::OCSP::online_check(ca_crt, chain[0], &cas, timeout);
+
+         auto status = resp.status_for(ca_crt, chain[0], std::chrono::system_clock::now());
+
+         if(status == Botan::Certificate_Status_Code::OCSP_RESPONSE_GOOD)
+            {
+            output() << "OCSP check OK\n";
+            }
+         else
+            {
+            output() << "OCSP check failed " << Botan::Path_Validation_Result::status_string(status) << "\n";
+            }
+
           return std::vector<uint8_t>();
-          }
+      }
 
 
       std::chrono::milliseconds tls_verify_cert_chain_ocsp_timeout() const override
@@ -247,7 +270,7 @@ class TLS_Server final : public Command, public Botan::TLS::Callbacks
             Botan::TLS::Callbacks::tls_verify_cert_chain(cert_chain, ocsp_responses,
                                                          trusted_roots, usage, hostname, policy);
 
-            output() << "Used original tls_veriry_cert_chain implementation\n";
+            output() << "Used original tls_verify_cert_chain implementation\n";
             }
          catch(...)
             {
@@ -393,6 +416,8 @@ class TLS_Server final : public Command, public Botan::TLS::Callbacks
       std::string m_line_buf;
       std::list<std::string> m_pending_output;
       Sandbox m_sandbox;
+      Botan::X509_Certificate ca_crt;
+      Botan::Certificate_Store_In_Memory cas;
    };
 
 
