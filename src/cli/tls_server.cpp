@@ -91,6 +91,11 @@ class TLS_Server final : public Command, public Botan::TLS::Callbacks
 
          cas.add_certificate(ca_crt);
 
+         std::chrono::milliseconds timeout(3000);
+
+         Botan::X509_Certificate certToBeVerified = Botan::X509_Certificate(server_crt);
+         ocspCachedResponse = Botan::OCSP::online_response(ca_crt, certToBeVerified, timeout);
+
          output() << "Listening for new connections on " << transport << " port " << port << std::endl;
 
          if(!m_sandbox.init())
@@ -230,11 +235,6 @@ class TLS_Server final : public Command, public Botan::TLS::Callbacks
                                                    const Botan::TLS::Certificate_Status_Request&) override
          {
          output() << "Callback for OCSP response\n";
-
-         std::chrono::milliseconds timeout(3000);
-
-         ocspCachedResponse = Botan::OCSP::online_response(ca_crt, chain[0], timeout);
-         // when failed: return std::vector<uint8_t>();
 
          Botan::OCSP::Response response(ocspCachedResponse);
 
