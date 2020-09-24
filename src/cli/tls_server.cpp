@@ -233,8 +233,8 @@ class TLS_Server final : public Command, public Botan::TLS::Callbacks
 
          std::chrono::milliseconds timeout(3000);
 
-         Botan::OCSP::Response resp = Botan::OCSP::online_check(ca_crt, chain[0], &cas, timeout);
-
+//         Botan::OCSP::Response resp = Botan::OCSP::online_check(ca_crt, chain[0], &cas, timeout);
+/*
          auto status = resp.status_for(ca_crt, chain[0], std::chrono::system_clock::now());
 
          if(status == Botan::Certificate_Status_Code::OCSP_RESPONSE_GOOD)
@@ -245,8 +245,8 @@ class TLS_Server final : public Command, public Botan::TLS::Callbacks
             {
             output() << "OCSP check failed " << Botan::Path_Validation_Result::status_string(status) << "\n";
             }
-
-          return std::vector<uint8_t>();
+*/
+          return Botan::OCSP::online_response(ca_crt, chain[0], timeout);
       }
 
 

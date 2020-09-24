@@ -197,11 +197,13 @@ class BOTAN_PUBLIC_API(2,0) Response final
 
 #if defined(BOTAN_HAS_HTTP_UTIL)
 
+BOTAN_PUBLIC_API(2,1)
 std::vector<uint8_t> online_response(const X509_Certificate& issuer,
                                      const BigInt& subject_serial,
                                      const std::string& ocsp_responder,
                                      std::chrono::milliseconds timeout);
 
+BOTAN_PUBLIC_API(2,1)
 std::vector<uint8_t>  online_response(const X509_Certificate& issuer,
                                       const X509_Certificate& subject,
                                       std::chrono::milliseconds timeout);
